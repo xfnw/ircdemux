@@ -88,10 +88,10 @@ int initEpoll() {
 
 int epollLoop() {
 	struct epoll_event events[MAX_EVENTS];
-	int slice, ready;
+	int slice;
 
 	for (;;) {
-		ready = epoll_wait(epfd, events, MAX_EVENTS, 1000);
+		int ready = epoll_wait(epfd, events, MAX_EVENTS, 1000);
 		for (slice = 0; slice < ready; slice++) {
 			if (events[slice].events & EPOLLERR) {
 				warnint("disconnected", events[slice].data.fd);
