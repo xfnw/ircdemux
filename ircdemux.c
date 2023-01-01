@@ -28,6 +28,13 @@ void warn(char *message) {
 		fprintf(stderr, "[WARN] %s\n", message);
 }
 
+void warnint(char *message, int param) {
+	if (color)
+		fprintf(stderr, "[\e[33mWARN\e[m] %d %s\n", param, message);
+	else
+		fprintf(stderr, "[WARN] %d %s\n", param, message);
+}
+
 void error(int err, char *message) {
 	if (color)
 		fprintf(stderr, "[\e[31mERROR\e[m] %s\n", message);
@@ -86,10 +93,15 @@ int epollLoop() {
 	for (;;) {
 		ready = epoll_wait(epfd, events, MAX_EVENTS, 1000);
 		for (slice = 0; slice < ready; slice++) {
-			if (events[slice].events & EPOLLIN)
-				printf("%d got data or something!\n", events[slice].data.fd);
+			if (events[slice].events & EPOLLERR) {
+				warnint("disconnected", events[slice].data.fd);
+				close(events[slice].data.fd);
+				continue;
+			}
 			if (events[slice].events & EPOLLOUT)
 				printf("%d is ready to write!\n", events[slice].data.fd);
+			if (events[slice].events & EPOLLIN)
+				printf("%d got data or something!\n", events[slice].data.fd);
 		}
 	}
 }
