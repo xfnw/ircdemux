@@ -58,7 +58,7 @@ int openConnect(int epfd, char *server, char *port) {
 
 	if (getaddrinfo(server, port, &hints, &res) != 0) {
 		warn("failed to resolve host");
-		return 14;
+		return -1;
 	}
 
 	hints.ai_socktype |= SOCK_NONBLOCK;
@@ -73,7 +73,7 @@ int openConnect(int epfd, char *server, char *port) {
 	freeaddrinfo(res);
 	if (!r) {
 		warn("failed to connect");
-		return 111;
+		return -1;
 	}
 
 	struct epoll_event event;
@@ -81,7 +81,7 @@ int openConnect(int epfd, char *server, char *port) {
 	event.data.fd = sockfd;
 	epoll_ctl(epfd, EPOLL_CTL_ADD, sockfd, &event);
 
-	return 0;
+	return sockfd;
 }
 
 int initEpoll() {
@@ -127,8 +127,9 @@ int epollLoop() {
 			//if (events[slice].events & EPOLLOUT)
 			//	printf("%d is ready to write!\n", events[slice].data.fd);
 			if (events[slice].events & EPOLLIN) {
-				printf("%d got %d data or something!\n", events[slice].data.fd, readLine((char *)stdinbuf, 512, events[slice].data.fd));
-				printf("%s", stdinbuf);
+				//printf("%d got %d data or something!\n", events[slice].data.fd,
+				readLine((char *)stdinbuf, 512, events[slice].data.fd);
+				info((char *)stdinbuf);
 			}
 		}
 	}
@@ -143,7 +144,9 @@ int main() {
 	}
 
 	initEpoll();
-	openConnect(epfd, "localhost", "6969");
+	int desc = openConnect(epfd, "wppnx", "6667");
+	write(desc, "USER x x x x\r\n", 14);
+	write(desc, "NICK xftesty\r\n", 14);
 	epollLoop();
 
 	error(117, "not implemented");
