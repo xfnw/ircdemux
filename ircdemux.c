@@ -77,7 +77,7 @@ int openConnect(int epfd, char *server, char *port) {
 	}
 
 	struct epoll_event event;
-	event.events = EPOLLIN | EPOLLOUT;
+	event.events = EPOLLIN | EPOLLRDHUP; // | EPOLLOUT;
 	event.data.fd = sockfd;
 	epoll_ctl(epfd, EPOLL_CTL_ADD, sockfd, &event);
 
@@ -89,29 +89,47 @@ int initEpoll() {
 	
 	/* add stdin to epoll instance */
 	struct epoll_event event;
-	event.events = EPOLLIN;
+	event.events = EPOLLIN | EPOLLRDHUP;
 	event.data.fd = 0; /* fd 0 is stdin */
 
 	epoll_ctl(epfd, EPOLL_CTL_ADD, 0, &event);
 }
 
+int readLine(char *buf, int maxlen, int fd) {
+	int bufslice;
+
+	maxlen--;
+
+	for (bufslice=0; bufslice < maxlen; bufslice++) {
+		if (!read(fd, buf + bufslice, 1) ||
+				buf[bufslice] == '\n')
+			break;
+	}
+
+	buf[bufslice+1] = '\0';
+
+	return bufslice;
+}
+
 int epollLoop() {
 	struct epoll_event events[MAX_EVENTS];
-	char *stdinbuf[MAX_EVENTS * 512];
-	int slice, bufslice, readslice;
+	char *stdinbuf[513];
+	int slice, readslice;
 
 	for (;;) {
 		int ready = epoll_wait(epfd, events, MAX_EVENTS, 1000);
 		for (slice = 0; slice < ready; slice++) {
-			if (events[slice].events & EPOLLERR) {
+			if (events[slice].events & (EPOLLERR|EPOLLRDHUP)) {
 				warnint("disconnected", events[slice].data.fd);
 				close(events[slice].data.fd);
 				continue;
 			}
-			if (events[slice].events & EPOLLOUT)
-				printf("%d is ready to write!\n", events[slice].data.fd);
-			if (events[slice].events & EPOLLIN)
-				printf("%d got data or something!\n", events[slice].data.fd);
+			//if (events[slice].events & EPOLLOUT)
+			//	printf("%d is ready to write!\n", events[slice].data.fd);
+			if (events[slice].events & EPOLLIN) {
+				printf("%d got %d data or something!\n", events[slice].data.fd, readLine((char *)stdinbuf, 512, events[slice].data.fd));
+				printf("%s", stdinbuf);
+			}
 		}
 	}
 }
