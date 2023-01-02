@@ -5,9 +5,11 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <netdb.h>
 #include <arpa/inet.h>
 #include <sys/epoll.h>
 #include <sys/socket.h>
+#include <sys/types.h>
 
 #define MAX_EVENTS 128
 
@@ -43,34 +45,41 @@ void error(int err, char *message) {
 	exit(err);
 }
 
-int openConnect(int epfd, char *server, int port) {
+int openConnect(int epfd, char *server, char *port) {
 	int sockfd;
-	struct sockaddr_in deets;
+	static struct addrinfo hints;
+	struct addrinfo *res, *r;
 
-	if ( (sockfd = socket(AF_INET, SOCK_STREAM|SOCK_NONBLOCK, 0)) < 0 ) {
-		warn("failed to allocate socket");
-		return 11;
+	memset(&hints, 0, sizeof(hints));
+	hints.ai_family = AF_UNSPEC;
+	hints.ai_socktype = SOCK_STREAM;
+	/* SOCK_NONBLOCK will get set later, getaddrinfo
+	 * seems to not like when hints contain it */
+
+	if (getaddrinfo(server, port, &hints, &res) != 0) {
+		warn("failed to resolve host");
+		return 14;
 	}
-	
+
+	hints.ai_socktype |= SOCK_NONBLOCK;
+
+	for (r = res; r; r = r->ai_next) {
+		if ((sockfd = socket(r->ai_family, r->ai_socktype, r->ai_protocol)) == -1 )
+			continue;
+		if (connect(sockfd, r->ai_addr, r->ai_addrlen) == 0)
+			break;
+		close(sockfd);
+	}
+	freeaddrinfo(res);
+	if (!r) {
+		warn("failed to connect");
+		return 111;
+	}
+
 	struct epoll_event event;
 	event.events = EPOLLIN | EPOLLOUT;
 	event.data.fd = sockfd;
 	epoll_ctl(epfd, EPOLL_CTL_ADD, sockfd, &event);
-
-	memset(&deets, 0, sizeof(deets));
-	deets.sin_family = AF_INET;
-	deets.sin_port = htons(port);
-	if (!inet_pton(AF_INET, server, &deets.sin_addr.s_addr)){
-		warn("failed to resolve host");
-		close(sockfd);
-		return 14;
-	}
-
-	if (!connect(sockfd, (struct sockaddr*)&deets, sizeof(deets)) || errno != EINPROGRESS) {
-		warn("failed to connect");
-		close(sockfd);
-		return 111;
-	}
 
 	return 0;
 }
@@ -88,7 +97,8 @@ int initEpoll() {
 
 int epollLoop() {
 	struct epoll_event events[MAX_EVENTS];
-	int slice;
+	char *stdinbuf[MAX_EVENTS * 512];
+	int slice, bufslice, readslice;
 
 	for (;;) {
 		int ready = epoll_wait(epfd, events, MAX_EVENTS, 1000);
@@ -115,7 +125,7 @@ int main() {
 	}
 
 	initEpoll();
-	openConnect(epfd, "127.0.0.1", 6969);
+	openConnect(epfd, "localhost", "6969");
 	epollLoop();
 
 	error(117, "not implemented");
