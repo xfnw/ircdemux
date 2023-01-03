@@ -138,7 +138,7 @@ void handleLine(char *buf, int fd) {
 	}
 
 	char *source = NULL;
-	char *tok, *cmd, reply[513];
+	char *tok, *cmd;
 
 	source = strtok_r(buf, " \r\n", &tok);
 	if (*source != ':') {
@@ -162,7 +162,7 @@ void handleLine(char *buf, int fd) {
 int epollLoop() {
 	struct epoll_event events[MAX_EVENTS];
 	char *stdinbuf[513];
-	int slice, readslice;
+	int slice;
 
 	for (;;) {
 		int ready = epoll_wait(epfd, events, MAX_EVENTS, 1000);
