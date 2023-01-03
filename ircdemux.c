@@ -15,7 +15,7 @@
 #define MAX_EVENTS 128
 
 bool color = true;
-int epfd;
+int epfd, ewfd;
 
 void info(char *message) {
 	if (color)
@@ -83,16 +83,25 @@ int openConnect(int epfd, char *server, char *port) {
 				sizeof(flag)))
 		warn("failed to disable nagle's algorithm");
 
-	struct epoll_event event;
-	event.events = EPOLLIN | EPOLLRDHUP; // | EPOLLOUT;
-	event.data.fd = sockfd;
-	epoll_ctl(epfd, EPOLL_CTL_ADD, sockfd, &event);
+	{
+		struct epoll_event event;
+		event.events = EPOLLIN | EPOLLRDHUP;
+		event.data.fd = sockfd;
+		epoll_ctl(epfd, EPOLL_CTL_ADD, sockfd, &event);
+	}
+	{
+		struct epoll_event event;
+		event.events = EPOLLOUT;
+		event.data.fd = sockfd;
+		epoll_ctl(ewfd, EPOLL_CTL_ADD, sockfd, &event);
+	}
 
 	return sockfd;
 }
 
 int initEpoll() {
 	epfd = epoll_create(512);
+	ewfd = epoll_create(512);
 	
 	/* add stdin to epoll instance */
 	struct epoll_event event;
