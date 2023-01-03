@@ -111,6 +111,38 @@ int readLine(char *buf, int maxlen, int fd) {
 	return bufslice;
 }
 
+void handleLine(char *buf, int fd) {
+	if (fd == 0) {
+		if (*buf == '/') {
+			warn("control commands not yet implemented");
+			return;
+		}
+		warn("wah");
+		return;
+	}
+
+	char *source = NULL;
+	char *tok, *cmd, reply[513];
+
+	source = strtok_r(buf, " \r\n", &tok);
+	if (*source != ':') {
+		cmd = source;
+		source = NULL;
+	} else {
+		cmd = strtok_r(NULL, " \r\n", &tok);
+	}
+
+	/* tok is now the remaining, unprocessed line */
+
+	if (!strcmp("PING", cmd)) {
+		/* we do not need a \r\n at the end of the
+		 * format because buf /should/ end with that
+		 * still */
+		dprintf(fd, "PONG %s", tok);
+	}
+	printf("got %s from %s\n",cmd,source);
+}
+
 int epollLoop() {
 	struct epoll_event events[MAX_EVENTS];
 	char *stdinbuf[513];
@@ -130,6 +162,7 @@ int epollLoop() {
 				//printf("%d got %d data or something!\n", events[slice].data.fd,
 				readLine((char *)stdinbuf, 512, events[slice].data.fd);
 				info((char *)stdinbuf);
+				handleLine((char *)stdinbuf, events[slice].data.fd);
 			}
 		}
 	}
