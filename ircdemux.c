@@ -161,7 +161,7 @@ void handleLine(char *buf, int fd) {
 
 int epollLoop() {
 	struct epoll_event events[MAX_EVENTS];
-	char *stdinbuf[513];
+	char *inbuf[513];
 	int slice;
 
 	for (;;) {
@@ -176,9 +176,9 @@ int epollLoop() {
 			//	printf("%d is ready to write!\n", events[slice].data.fd);
 			if (events[slice].events & EPOLLIN) {
 				//printf("%d got %d data or something!\n", events[slice].data.fd,
-				readLine((char *)stdinbuf, 512, events[slice].data.fd);
-				info((char *)stdinbuf);
-				handleLine((char *)stdinbuf, events[slice].data.fd);
+				readLine((char *)inbuf, 512, events[slice].data.fd);
+				info((char *)inbuf);
+				handleLine((char *)inbuf, events[slice].data.fd);
 			}
 		}
 	}
