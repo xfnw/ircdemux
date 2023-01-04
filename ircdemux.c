@@ -1,4 +1,5 @@
 #include <errno.h>
+#include <fcntl.h>
 #include <resolv.h>
 #include <stdbool.h>
 #include <stdio.h>
@@ -103,6 +104,9 @@ int initEpoll() {
 	epfd = epoll_create(512);
 	ewfd = epoll_create(512);
 	
+	/* make stdin nonblocking */
+	fcntl(0, F_SETFL, fcntl(0, F_GETFL) | O_NONBLOCK);
+
 	/* add stdin to epoll instance */
 	struct epoll_event event;
 	event.events = EPOLLIN | EPOLLRDHUP;
@@ -112,28 +116,61 @@ int initEpoll() {
 }
 
 int readLine(char *buf, int maxlen, int fd) {
-	int bufslice;
+	int bufslice, readresult;
 
 	maxlen--;
 
 	for (bufslice=0; bufslice < maxlen; bufslice++) {
-		if (!read(fd, buf + bufslice, 1) ||
+		if (!(readresult = read(fd, buf + bufslice, 1)) ||
 				buf[bufslice] == '\n')
 			break;
 	}
 
 	buf[bufslice+1] = '\0';
 
-	return bufslice;
+	/* return -1 if no more data to read */
+	if (readresult == -1)
+		return -1;
+
+	/* return length otherwise */
+	return bufslice+1;
 }
 
-void handleLine(char *buf, int fd) {
-	if (fd == 0) {
-		if (*buf == '/') {
-			warn("control commands not yet implemented");
-			return;
+void handleSLine(char *buf, int buflen, int outfd) {
+	if (*buf == '/') {
+		warn("control commands not yet implemented");
+		return;
+	}
+	printf("hmm %d %d %ul\n", outfd, buflen);
+	write(outfd, buf, buflen);
+	return;
+}
+
+void aggressiveRead(char *buf, int buflen, int fd) {
+	struct epoll_event events[MAX_EVENTS];
+	int slice;
+
+	for (;;) {
+		int ready = epoll_wait(ewfd, events, MAX_EVENTS, 1000);
+
+		for (slice = 0; slice < ready; slice++) {
+			if (events[slice].events & (EPOLLERR|EPOLLRDHUP)) {
+				warnint("disconnected", events[slice].data.fd);
+				close(events[slice].data.fd);
+				continue;
+			}
+			if (events[slice].events & EPOLLOUT) {
+				handleSLine(buf, buflen, events[slice].data.fd);
+				if ((buflen = readLine(buf, 512, fd)) == -1)
+					return;
+			}
 		}
-		warn("wah");
+	}
+}
+
+void handleLine(char *buf, int buflen, int fd) {
+	if (fd == 0) {
+		aggressiveRead(buf, buflen, 0);
 		return;
 	}
 
@@ -172,13 +209,11 @@ int epollLoop() {
 				close(events[slice].data.fd);
 				continue;
 			}
-			//if (events[slice].events & EPOLLOUT)
-			//	printf("%d is ready to write!\n", events[slice].data.fd);
 			if (events[slice].events & EPOLLIN) {
 				//printf("%d got %d data or something!\n", events[slice].data.fd,
-				readLine((char *)inbuf, 512, events[slice].data.fd);
+				int buflen = readLine((char *)inbuf, 512, events[slice].data.fd);
 				info((char *)inbuf);
-				handleLine((char *)inbuf, events[slice].data.fd);
+				handleLine((char *)inbuf, buflen, events[slice].data.fd);
 			}
 		}
 	}
