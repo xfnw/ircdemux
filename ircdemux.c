@@ -210,6 +210,20 @@ void handleControlCommand(char *buf, int buflen) {
 		break; case 't':
 			memcpy(template, buf, buflen-3);
 			template[buflen-3] = '\0';
+		break; case 'a':
+			struct epoll_event events[MAX_EVENTS];
+			int slice;
+			int ready = epoll_wait(ewfd, events, MAX_EVENTS, 1000);
+			for (slice = 0; slice < ready; slice++) {
+				if (events[slice].events & (EPOLLERR|EPOLLRDHUP)) {
+					warnint("disconnected", events[slice].data.fd);
+					close(events[slice].data.fd);
+					continue;
+				}
+				if (events[slice].events & EPOLLOUT) {
+					write(events[slice].data.fd, buf, buflen-2);
+				}
+			}
 		break; default: warn("unknown control command");
 	}
 }
