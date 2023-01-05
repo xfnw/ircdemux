@@ -5,6 +5,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 #include <unistd.h>
 #include <netdb.h>
 #include <arpa/inet.h>
@@ -17,6 +18,10 @@
 
 bool color = true;
 int epfd, ewfd;
+unsigned int srngstate;
+
+/* chars that can be usually used anywhere in a nickname */
+static const char *nickchars = "abcdefghijklmnopqrstuvwxyz\\_|[]";
 
 void info(char *message) {
 	if (color)
@@ -45,6 +50,14 @@ void error(int err, char *message) {
 	else
 		fprintf(stderr, "[ERROR] %s\n", message);
 	exit(err);
+}
+
+/* fast-ish bad random number generator
+ * magic: 584963 and 3942989 are primes, and 2147483648 is 2**31 to
+ * make mod faster */
+int srng(int input, int mod) {
+	srngstate = (srngstate * 584963 + 3942989 + input) % 2147483648;
+	return srngstate % mod;
 }
 
 int openConnect(int epfd, char *server, char *port) {
@@ -189,9 +202,23 @@ void handleLine(char *buf, int buflen, int fd) {
 
 	if (!strcmp("PING", cmd)) {
 		/* we do not need a \r\n at the end of the
-		 * format because buf /should/ end with that
+		 * format because tok /should/ end with that
 		 * still */
 		dprintf(fd, "PONG %s", tok);
+		return;
+	}
+
+	/* ERR_NAMEINUSE */
+	if (!strcmp("433", cmd)) {
+		char *attemptednick;
+		strtok_r(NULL, " \r\n", &tok);
+		attemptednick = strtok_r(NULL, " \r\n", &tok);
+
+		attemptednick[srng(fd, strlen(attemptednick))] =
+			nickchars[srng(fd, sizeof(nickchars))];
+
+		dprintf(fd, "NICK %s\r\n", attemptednick);
+		return;
 	}
 	printf("got %s from %s\n",cmd,source);
 }
@@ -226,6 +253,8 @@ int main() {
 			color = false;
 		}
 	}
+
+	srngstate = time(NULL);
 
 	initEpoll();
 	int desc = openConnect(epfd, "wppnx", "6667");
