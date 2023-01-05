@@ -281,6 +281,11 @@ void handleLine(char *buf, int buflen, int fd) {
 	char *source, *tok, *cmd;
 
 	source = strtok_r(buf, " \r\n", &tok);
+
+	/* why the heck is the ircd sending empty lines */
+	if (source == NULL)
+		return;
+
 	if (*source != ':') {
 		cmd = source;
 		/* hack to get pointer to \0, lets us
@@ -289,6 +294,8 @@ void handleLine(char *buf, int buflen, int fd) {
 		source = tok-1;
 	} else {
 		cmd = strtok_r(NULL, " \r\n", &tok);
+		if (cmd == NULL)
+			return;
 	}
 
 	/* tok is now the remaining, unprocessed line */
@@ -310,6 +317,9 @@ void handleLine(char *buf, int buflen, int fd) {
 			char *attemptednick;
 			strtok_r(NULL, " \r\n", &tok);
 			attemptednick = strtok_r(NULL, " \r\n", &tok);
+
+			if (attemptednick == NULL)
+				return;
 
 			attemptednick[srng(fd, strlen(attemptednick))] =
 				nickchars[srng(fd, sizeof(nickchars))];
