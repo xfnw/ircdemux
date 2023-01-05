@@ -30,6 +30,13 @@ void info(char *message) {
 		fprintf(stderr, "[INFO] %s\n", message);
 }
 
+void infochar(char *m1, char *m2, char *m3) {
+	if (color)
+		fprintf(stderr, "[\e[37mINFO\e[m] %s %s %s\n", m1, m2, m3);
+	else
+		fprintf(stderr, "[INFO] %s %s %s\n", m1, m2, m3);
+}
+
 void warn(char *message) {
 	if (color)
 		fprintf(stderr, "[\e[33mWARN\e[m] %s\n", message);
@@ -151,7 +158,6 @@ int readLine(char *buf, int maxlen, int fd) {
 }
 
 void handleSLine(char *buf, int buflen, int outfd) {
-	printf("hmm %d %d\n", outfd, buflen);
 	write(outfd, buf, buflen);
 	return;
 }
@@ -224,12 +230,42 @@ void handleLine(char *buf, int buflen, int fd) {
 	source = strtok_r(buf, " \r\n", &tok);
 	if (*source != ':') {
 		cmd = source;
-		source = NULL;
+		/* hack to get pointer to \0, lets us
+		 * blindly printf the source without a
+		 * segfault */
+		source = tok-1;
 	} else {
 		cmd = strtok_r(NULL, " \r\n", &tok);
 	}
 
 	/* tok is now the remaining, unprocessed line */
+
+	/* shortcut for ignoring lines faster */
+	if (!strcmp("PRIVMSG", cmd) ||
+			!strcmp("JOIN", cmd))
+		return;
+
+	/* differentiating between snotes and normal notices
+	 * is too expensive, output them all */
+	if (*cmd == '4' ||
+			!strcmp("NOTICE", cmd) ||
+			!strcmp("366", cmd) ||
+			!strcmp("001", cmd)) {
+
+		/* ERR_NAMEINUSE */
+		if (!strcmp("433", cmd)) {
+			char *attemptednick;
+			strtok_r(NULL, " \r\n", &tok);
+			attemptednick = strtok_r(NULL, " \r\n", &tok);
+
+			attemptednick[srng(fd, strlen(attemptednick))] =
+				nickchars[srng(fd, sizeof(nickchars))];
+
+			dprintf(fd, "NICK %s\r\n", attemptednick);
+		}
+		infochar(source, cmd, tok);
+		return;
+	}
 
 	if (!strcmp("PING", cmd)) {
 		/* we do not need a \r\n at the end of the
@@ -238,20 +274,7 @@ void handleLine(char *buf, int buflen, int fd) {
 		dprintf(fd, "PONG %s", tok);
 		return;
 	}
-
-	/* ERR_NAMEINUSE */
-	if (!strcmp("433", cmd)) {
-		char *attemptednick;
-		strtok_r(NULL, " \r\n", &tok);
-		attemptednick = strtok_r(NULL, " \r\n", &tok);
-
-		attemptednick[srng(fd, strlen(attemptednick))] =
-			nickchars[srng(fd, sizeof(nickchars))];
-
-		dprintf(fd, "NICK %s\r\n", attemptednick);
-		return;
-	}
-	printf("got %s from %s\n",cmd,source);
+	//printf("got %s from %s\n",cmd,source);
 }
 
 int epollLoop() {
@@ -268,9 +291,8 @@ int epollLoop() {
 				continue;
 			}
 			if (events[slice].events & EPOLLIN) {
-				//printf("%d got %d data or something!\n", events[slice].data.fd,
 				int buflen = readLine((char *)inbuf, 512, events[slice].data.fd);
-				info((char *)inbuf);
+				//info((char *)inbuf);
 				handleLine((char *)inbuf, buflen, events[slice].data.fd);
 			}
 		}
