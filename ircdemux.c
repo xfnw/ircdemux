@@ -22,6 +22,7 @@ unsigned int srngstate;
 
 /* chars that can be usually used anywhere in a nickname */
 static const char *nickchars = "abcdefghijklmnopqrstuvwxyz\\_|[]";
+char template[513] = "";
 
 void info(char *message) {
 	if (color)
@@ -158,7 +159,7 @@ int readLine(char *buf, int maxlen, int fd) {
 }
 
 void handleSLine(char *buf, int buflen, int outfd) {
-	write(outfd, buf, buflen);
+	dprintf(outfd, "%s%s", template, buf);
 	return;
 }
 
@@ -206,6 +207,9 @@ void handleControlCommand(char *buf, int buflen) {
 			}
 
 			registerConnect(host, port, nick, chan, user, real);
+		break; case 't':
+			memcpy(template, buf, buflen-3);
+			template[buflen-3] = '\0';
 		break; default: warn("unknown control command");
 	}
 }
