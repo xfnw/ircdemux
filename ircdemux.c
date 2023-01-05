@@ -23,6 +23,7 @@ unsigned int srngstate;
 /* chars that can be usually used anywhere in a nickname */
 static const char *nickchars = "abcdefghijklmnopqrstuvwxyz\\_|[]";
 char template[513] = "";
+char chan[513] = "";
 
 void info(char *message) {
 	if (color)
@@ -163,7 +164,7 @@ void handleSLine(char *buf, int buflen, int outfd) {
 	return;
 }
 
-int registerConnect(char *host, char *port, char *nick, char *chan, char *user, char *real) {
+int registerConnect(char *host, char *port, char *nick, char *user, char *real) {
 	int desc;
 
 	if ((desc = openConnect(epfd, host, port)) != -1) {
@@ -174,9 +175,6 @@ int registerConnect(char *host, char *port, char *nick, char *chan, char *user, 
 
 		dprintf(desc, "USER %s 0 * :%s\r\n", user, real);
 		dprintf(desc, "NICK %s\r\n", nick);
-
-		if (chan != NULL)
-			dprintf(desc, "JOIN %s\r\n", chan);
 
 		return desc;
 	}
@@ -193,11 +191,10 @@ void handleControlCommand(char *buf, int buflen) {
 
 	switch (buf[-1]) {
 		break; case 'c':
-			char *host, *port, *nick, *chan, *user, *real;
+			char *host, *port, *nick, *user, *real;
 			host = strtok_r(buf, " \r\n", &tok);
 			port = strtok_r(NULL, " \r\n", &tok);
 			nick = strtok_r(NULL, " \r\n", &tok);
-			chan = strtok_r(NULL, " \r\n", &tok);
 			user = strtok_r(NULL, " \r\n", &tok);
 			real = tok;
 
@@ -206,10 +203,13 @@ void handleControlCommand(char *buf, int buflen) {
 				return;
 			}
 
-			registerConnect(host, port, nick, chan, user, real);
+			registerConnect(host, port, nick, user, real);
 		break; case 't':
 			memcpy(template, buf, buflen-3);
 			template[buflen-3] = '\0';
+		break; case 'j':
+			memcpy(chan, buf, buflen-3);
+			chan[buflen-3] = '\0';
 		break; case 'a':
 			struct epoll_event events[MAX_EVENTS];
 			int slice;
@@ -316,6 +316,11 @@ void handleLine(char *buf, int buflen, int fd) {
 
 			dprintf(fd, "NICK %s\r\n", attemptednick);
 		}
+
+		/* RPL_WELCOME */
+		if (*chan != '\0' && !strcmp("001", cmd))
+			dprintf(fd, "JOIN %s\r\n", chan);
+
 		infochar(source, cmd, tok);
 		return;
 	}
