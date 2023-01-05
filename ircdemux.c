@@ -101,7 +101,7 @@ int openConnect(int epfd, char *server, char *port) {
 	}
 
 	int flag = 1;
-	if (!setsockopt(sockfd, IPPROTO_TCP, TCP_NODELAY,
+	if (setsockopt(sockfd, IPPROTO_TCP, TCP_NODELAY,
 				(char *) &flag,
 				sizeof(flag)))
 		warn("failed to disable nagle's algorithm");
