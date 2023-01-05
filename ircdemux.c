@@ -224,8 +224,7 @@ void handleLine(char *buf, int buflen, int fd) {
 		return;
 	}
 
-	char *source = NULL;
-	char *tok, *cmd;
+	char *source, *tok, *cmd;
 
 	source = strtok_r(buf, " \r\n", &tok);
 	if (*source != ':') {
