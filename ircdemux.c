@@ -162,14 +162,50 @@ void handleSLine(char *buf, int buflen, int outfd) {
 	return;
 }
 
+int registerConnect(char *host, char *port, char *nick, char *chan, char *user, char *real) {
+	int desc;
+
+	if ((desc = openConnect(epfd, host, port)) != -1) {
+		if (user == NULL || *user == '\0')
+			user = nick;
+		if (real == NULL || *real == '\0')
+			real = user;
+
+		dprintf(desc, "USER %s 0 * :%s\r\n", user, real);
+		dprintf(desc, "NICK %s\r\n", nick);
+
+		if (chan != NULL)
+			dprintf(desc, "JOIN %s\r\n", chan);
+
+		return desc;
+	}
+	return -1;
+}
+
 void handleControlCommand(char *buf, int buflen) {
 	if (buflen < 3)
 		return;
 
-	switch (buf[1]) {
+	buf += 2;
+
+	char *tok;
+
+	switch (buf[-1]) {
 		break; case 'c':
-			info("wow");
-			info("meow");
+			char *host, *port, *nick, *chan, *user, *real;
+			host = strtok_r(buf, " \r\n", &tok);
+			port = strtok_r(NULL, " \r\n", &tok);
+			nick = strtok_r(NULL, " \r\n", &tok);
+			chan = strtok_r(NULL, " \r\n", &tok);
+			user = strtok_r(NULL, " \r\n", &tok);
+			real = tok;
+
+			if (host == NULL || port == NULL || nick == NULL) {
+				warn("invalid syntax");
+				return;
+			}
+
+			registerConnect(host, port, nick, chan, user, real);
 		break; default: warn("unknown control command");
 	}
 }
@@ -309,9 +345,6 @@ int main() {
 	srngstate = time(NULL);
 
 	initEpoll();
-	int desc = openConnect(epfd, "wppnx", "6667");
-	write(desc, "USER x x x x\r\n", 14);
-	write(desc, "NICK xftesty\r\n", 14);
 	epollLoop();
 
 	error(117, "not implemented");
