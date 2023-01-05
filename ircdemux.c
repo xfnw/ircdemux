@@ -24,6 +24,7 @@ unsigned int srngstate;
 static const char *nickchars = "abcdefghijklmnopqrstuvwxyz\\_|[]";
 char template[513] = "";
 char chan[513] = "";
+int burst = 1;
 
 void info(char *message) {
 	if (color)
@@ -224,6 +225,11 @@ void handleControlCommand(char *buf, int buflen) {
 					write(events[slice].data.fd, buf, buflen-2);
 				}
 			}
+		break; case 'b':
+			if ((burst = atoi(buf)) < 1) {
+				burst = 1;
+				warn("invalid burst value, reset to 1");
+			}
 		break; default: warn("unknown control command");
 	}
 }
@@ -241,15 +247,18 @@ void aggressiveRead(char *buf, int buflen, int fd) {
 				continue;
 			}
 			if (events[slice].events & EPOLLOUT) {
-				/* skip out on priority
-				 * reading, control commands
-				 * may take a while */
-				if (*buf == '/')
-					goto CONTROLCOMMAND;
+				int bl;
+				for (bl=0; bl < burst; bl++) {
+					/* skip out on priority
+					 * reading, control commands
+					 * may take a while */
+					if (*buf == '/')
+						goto CONTROLCOMMAND;
 
-				handleSLine(buf, buflen, events[slice].data.fd);
-				if ((buflen = readLine(buf, 512, fd)) == -1)
-					return;
+					handleSLine(buf, buflen, events[slice].data.fd);
+					if ((buflen = readLine(buf, 512, fd)) == -1)
+						return;
+				}
 			}
 		}
 		/* allow some stuff to still function if
