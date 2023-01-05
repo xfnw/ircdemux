@@ -129,7 +129,8 @@ int initEpoll() {
 }
 
 int readLine(char *buf, int maxlen, int fd) {
-	int bufslice, readresult;
+	int bufslice;
+	int readresult = -1;
 
 	maxlen--;
 
@@ -150,13 +151,21 @@ int readLine(char *buf, int maxlen, int fd) {
 }
 
 void handleSLine(char *buf, int buflen, int outfd) {
-	if (*buf == '/') {
-		warn("control commands not yet implemented");
-		return;
-	}
-	printf("hmm %d %d %ul\n", outfd, buflen);
+	printf("hmm %d %d\n", outfd, buflen);
 	write(outfd, buf, buflen);
 	return;
+}
+
+void handleControlCommand(char *buf, int buflen) {
+	if (buflen < 3)
+		return;
+
+	switch (buf[1]) {
+		break; case 'c':
+			info("wow");
+			info("meow");
+		break; default: warn("unknown control command");
+	}
 }
 
 void aggressiveRead(char *buf, int buflen, int fd) {
@@ -165,7 +174,6 @@ void aggressiveRead(char *buf, int buflen, int fd) {
 
 	for (;;) {
 		int ready = epoll_wait(ewfd, events, MAX_EVENTS, 1000);
-
 		for (slice = 0; slice < ready; slice++) {
 			if (events[slice].events & (EPOLLERR|EPOLLRDHUP)) {
 				warnint("disconnected", events[slice].data.fd);
@@ -173,12 +181,35 @@ void aggressiveRead(char *buf, int buflen, int fd) {
 				continue;
 			}
 			if (events[slice].events & EPOLLOUT) {
+				/* skip out on priority
+				 * reading, control commands
+				 * may take a while */
+				if (*buf == '/')
+					goto CONTROLCOMMAND;
+
 				handleSLine(buf, buflen, events[slice].data.fd);
 				if ((buflen = readLine(buf, 512, fd)) == -1)
 					return;
 			}
 		}
+		/* allow some stuff to still function if
+		 * no file descriptors are writable after
+		 * timeout */
+		if (ready == 0) {
+			warn("no writable descriptors");
+			if (*buf == '/')
+				goto CONTROLCOMMAND;
+			/* start dropping lines, so we can
+			 * read future control commands */
+			if ((buflen = readLine(buf, 512, fd)) == -1)
+				return;
+		}
 	}
+
+	return;
+
+CONTROLCOMMAND:
+	handleControlCommand(buf, buflen);
 }
 
 void handleLine(char *buf, int buflen, int fd) {
