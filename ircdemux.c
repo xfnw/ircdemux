@@ -191,7 +191,7 @@ void handleControlCommand(char *buf, int buflen) {
 	char *tok;
 
 	switch (buf[-1]) {
-		break; case 'c':
+		break; case 'c': {
 			char *host, *port, *nick, *user, *real;
 			host = strtok_r(buf, " \r\n", &tok);
 			port = strtok_r(NULL, " \r\n", &tok);
@@ -205,13 +205,14 @@ void handleControlCommand(char *buf, int buflen) {
 			}
 
 			registerConnect(host, port, nick, user, real);
+		}
 		break; case 't':
 			memcpy(template, buf, buflen-3);
 			template[buflen-3] = '\0';
 		break; case 'j':
 			memcpy(chan, buf, buflen-3);
 			chan[buflen-3] = '\0';
-		break; case 'a':
+		break; case 'a': {
 			struct epoll_event events[MAX_EVENTS];
 			int slice;
 			int ready = epoll_wait(ewfd, events, MAX_EVENTS, 1000);
@@ -225,6 +226,7 @@ void handleControlCommand(char *buf, int buflen) {
 					write(events[slice].data.fd, buf, buflen-2);
 				}
 			}
+		}
 		break; case 'b':
 			if ((burst = atoi(buf)) < 1) {
 				burst = 1;
