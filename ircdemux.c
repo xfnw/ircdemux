@@ -388,7 +388,5 @@ int main() {
 
 	initEpoll();
 	epollLoop();
-
-	error(117, "not implemented");
 }
 
