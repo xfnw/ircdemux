@@ -123,7 +123,7 @@ int openConnect(int epfd, char *server, char *port) {
 	return sockfd;
 }
 
-int initEpoll() {
+void initEpoll() {
 	epfd = epoll_create(512);
 	ewfd = epoll_create(512);
 	
