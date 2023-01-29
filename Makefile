@@ -1,5 +1,5 @@
 CC = c99
-CFLAGS ?= -D_GNU_SOURCE
+CFLAGS ?= -D_GNU_SOURCE -O3
 
 all: ircdemux
 
