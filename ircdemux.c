@@ -20,12 +20,15 @@ bool color = true;
 int epfd, ewfd;
 unsigned int srngstate;
 
-/* chars that can be usually used anywhere in a nickname */
+/* chars that can be usually used anywhere in a nickname,
+ * nicks cannot start with numbers, so we do not include
+ * them */
 static const char *nickchars = "abcdefghijklmnopqrstuvwxyz\\_|[]";
 char template[513] = "";
 char chan[513] = "";
 int burst = 1;
 
+/* TODO: make these into a macro or something */
 void info(char *message) {
 	if (color)
 		fprintf(stderr, "[\e[37mINFO\e[m] %s\n", message);
@@ -138,6 +141,8 @@ void initEpoll() {
 	epoll_ctl(epfd, EPOLL_CTL_ADD, 0, &event);
 }
 
+/* FIXME: better protect against partially read lines,
+ * rather than discarding the data */
 int readLine(char *buf, int maxlen, int fd) {
 	int bufslice;
 	int readresult = -1;
