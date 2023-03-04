@@ -316,10 +316,17 @@ void handleLine(char *buf, int buflen, int fd) {
 
 	/* tok is now the remaining, unprocessed line */
 
-	/* shortcut for ignoring lines faster */
-	if (!strcmp("PRIVMSG", cmd) ||
-			!strcmp("JOIN", cmd))
-		return;
+	if (*cmd == 'P')
+		if (!strcmp("ING", cmd+1)) {
+			/* we do not need a \r\n at the end of the
+			 * format because tok /should/ end with that
+			 * still */
+			dprintf(fd, "PONG %s", tok);
+			return;
+		} else
+			/* discard everything else starting
+			 * with P, such as PRIVMSG */
+			return;
 
 	/* differentiating between snotes and normal notices
 	 * is too expensive, output them all */
@@ -348,14 +355,6 @@ void handleLine(char *buf, int buflen, int fd) {
 			dprintf(fd, "JOIN %s\r\n", chan);
 
 		infochar(source, cmd, tok);
-		return;
-	}
-
-	if (!strcmp("PING", cmd)) {
-		/* we do not need a \r\n at the end of the
-		 * format because tok /should/ end with that
-		 * still */
-		dprintf(fd, "PONG %s", tok);
 		return;
 	}
 	//printf("got %s from %s\n",cmd,source);
