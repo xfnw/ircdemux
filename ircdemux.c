@@ -36,11 +36,14 @@ void info(char *message) {
 		fprintf(stderr, "[INFO] %s\n", message);
 }
 
+/* we do not need a newline, since the line-ending is still
+ * left on from the raw irc line. this does mean ircdemux's
+ * output will have inconsistent line endings, however */
 void infochar(char *m1, char *m2, char *m3) {
 	if (color)
-		fprintf(stderr, "[\e[37mINFO\e[m] %s %s %s\n", m1, m2, m3);
+		fprintf(stderr, "[\e[37mINFO\e[m] %s %s %s", m1, m2, m3);
 	else
-		fprintf(stderr, "[INFO] %s %s %s\n", m1, m2, m3);
+		fprintf(stderr, "[INFO] %s %s %s", m1, m2, m3);
 }
 
 void warn(char *message) {
