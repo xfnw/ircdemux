@@ -53,19 +53,18 @@ void warn(char *message) {
 		fprintf(stderr, "[WARN] %s\n", message);
 }
 
-void warnint(char *message, int param) {
-	if (color)
-		fprintf(stderr, "[\e[33mWARN\e[m] %d %s\n", param, message);
-	else
-		fprintf(stderr, "[WARN] %d %s\n", param, message);
-}
-
-void error(int err, char *message) {
+void error(char *message) {
 	if (color)
 		fprintf(stderr, "[\e[31mERROR\e[m] %s\n", message);
 	else
 		fprintf(stderr, "[ERROR] %s\n", message);
-	exit(err);
+}
+
+void errorint(char *message, int param) {
+	if (color)
+		fprintf(stderr, "[\e[31mERROR\e[m] %d %s\n", param, message);
+	else
+		fprintf(stderr, "[ERROR] %d %s\n", param, message);
 }
 
 /* fast-ish bad random number generator
@@ -87,7 +86,7 @@ int openConnect(int epfd, char *server, char *port) {
 	 * seems to not like when hints contain it */
 
 	if (getaddrinfo(server, port, &hints, &res) != 0) {
-		warn("failed to resolve host");
+		error("failed to resolve host");
 		return -1;
 	}
 
@@ -102,7 +101,7 @@ int openConnect(int epfd, char *server, char *port) {
 	}
 	freeaddrinfo(res);
 	if (!r) {
-		warn("failed to connect");
+		error("failed to connect");
 		return -1;
 	}
 
@@ -207,7 +206,7 @@ void handleControlCommand(char *buf, int buflen) {
 			real = tok;
 
 			if (host == NULL || port == NULL || nick == NULL) {
-				warn("invalid syntax");
+				error("invalid syntax");
 				return;
 			}
 
@@ -225,7 +224,7 @@ void handleControlCommand(char *buf, int buflen) {
 			int ready = epoll_wait(ewfd, events, MAX_EVENTS, 1000);
 			for (slice = 0; slice < ready; slice++) {
 				if (events[slice].events & (EPOLLERR|EPOLLRDHUP)) {
-					warnint("disconnected", events[slice].data.fd);
+					errorint("disconnected", events[slice].data.fd);
 					close(events[slice].data.fd);
 					continue;
 				}
@@ -239,7 +238,7 @@ void handleControlCommand(char *buf, int buflen) {
 				burst = 1;
 				warn("invalid burst value, reset to 1");
 			}
-		break; default: warn("unknown control command");
+		break; default: error("unknown control command");
 	}
 }
 
@@ -251,7 +250,7 @@ void aggressiveRead(char *buf, int buflen, int fd) {
 		int ready = epoll_wait(ewfd, events, MAX_EVENTS, 1000);
 		for (slice = 0; slice < ready; slice++) {
 			if (events[slice].events & (EPOLLERR|EPOLLRDHUP)) {
-				warnint("disconnected", events[slice].data.fd);
+				errorint("disconnected", events[slice].data.fd);
 				close(events[slice].data.fd);
 				continue;
 			}
@@ -371,7 +370,7 @@ int epollLoop() {
 		int ready = epoll_wait(epfd, events, MAX_EVENTS, 1000);
 		for (slice = 0; slice < ready; slice++) {
 			if (events[slice].events & (EPOLLERR|EPOLLRDHUP)) {
-				warnint("disconnected", events[slice].data.fd);
+				errorint("disconnected", events[slice].data.fd);
 				close(events[slice].data.fd);
 				continue;
 			}
@@ -395,6 +394,7 @@ int main() {
 	srngstate = time(NULL);
 
 	initEpoll();
+	info("welcome to ircdemux. we apologise for the chaos that will ensue.");
 	epollLoop();
 }
 
