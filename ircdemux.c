@@ -31,7 +31,7 @@ int burst = 1;
 /* TODO: make these into a macro or something */
 void info(char *message) {
 	if (color)
-		fprintf(stderr, "[\e[37mINFO\e[m] %s\n", message);
+		fprintf(stderr, "[\033[37mINFO\033[m] %s\n", message);
 	else
 		fprintf(stderr, "[INFO] %s\n", message);
 }
@@ -41,28 +41,28 @@ void info(char *message) {
  * output will have inconsistent line endings, however */
 void infochar(char *m1, char *m2, char *m3) {
 	if (color)
-		fprintf(stderr, "[\e[37mINFO\e[m] %s %s %s", m1, m2, m3);
+		fprintf(stderr, "[\033[37mINFO\033[m] %s %s %s", m1, m2, m3);
 	else
 		fprintf(stderr, "[INFO] %s %s %s", m1, m2, m3);
 }
 
 void warn(char *message) {
 	if (color)
-		fprintf(stderr, "[\e[33mWARN\e[m] %s\n", message);
+		fprintf(stderr, "[\033[33mWARN\033[m] %s\n", message);
 	else
 		fprintf(stderr, "[WARN] %s\n", message);
 }
 
 void error(char *message) {
 	if (color)
-		fprintf(stderr, "[\e[31mERROR\e[m] %s\n", message);
+		fprintf(stderr, "[\033[31mERROR\033[m] %s\n", message);
 	else
 		fprintf(stderr, "[ERROR] %s\n", message);
 }
 
 void errorint(char *message, int param) {
 	if (color)
-		fprintf(stderr, "[\e[31mERROR\e[m] %d %s\n", param, message);
+		fprintf(stderr, "[\033[31mERROR\033[m] %d %s\n", param, message);
 	else
 		fprintf(stderr, "[ERROR] %d %s\n", param, message);
 }
@@ -166,7 +166,7 @@ int readLine(char *buf, int maxlen, int fd) {
 	return bufslice+1;
 }
 
-void handleSLine(char *buf, int buflen, int outfd) {
+void handleSLine(char *buf, int outfd) {
 	dprintf(outfd, "%s%s", template, buf);
 	return;
 }
@@ -265,7 +265,7 @@ void aggressiveRead(char *buf, int buflen, int fd) {
 					if (*buf == '/')
 						goto CONTROLCOMMAND;
 
-					handleSLine(buf, buflen, events[slice].data.fd);
+					handleSLine(buf, events[slice].data.fd);
 					if ((buflen = readLine(buf, 512, fd)) == -1)
 						return;
 				}
@@ -319,7 +319,7 @@ void handleLine(char *buf, int buflen, int fd) {
 
 	/* tok is now the remaining, unprocessed line */
 
-	if (*cmd == 'P')
+	if (*cmd == 'P') {
 		if (!strcmp("ING", cmd+1)) {
 			/* we do not need a \r\n at the end of the
 			 * format because tok /should/ end with that
@@ -330,6 +330,7 @@ void handleLine(char *buf, int buflen, int fd) {
 			/* discard everything else starting
 			 * with P, such as PRIVMSG */
 			return;
+	}
 
 	/* differentiating between snotes and normal notices
 	 * is too expensive, output them all */
