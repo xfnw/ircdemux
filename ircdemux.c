@@ -66,10 +66,9 @@ void error(int err, char *message) {
 }
 
 /* fast-ish bad random number generator
- * magic: 584963 and 3942989 are primes, and 2147483648 is 2**31 to
- * make mod faster */
+ * magic: 5849633 and 3942989 are primes */
 int srng(int input, int mod) {
-	srngstate = (srngstate * 584963 + 3942989 + input) % 2147483648;
+	srngstate = srngstate * 5849633 + 3942989 + input;
 	return srngstate % mod;
 }
 
