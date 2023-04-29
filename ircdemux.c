@@ -212,6 +212,8 @@ void handleControlCommand(char *buf, int buflen) {
 
 			registerConnect(host, port, nick, user, real);
 		}
+		break; case 's':
+			srngstate += time(NULL);
 		break; case 't':
 			memcpy(template, buf, buflen-3);
 			template[buflen-3] = '\0';
@@ -346,7 +348,7 @@ void handleLine(char *buf, int buflen, int fd) {
 				return;
 
 			attemptednick[srng(fd, strlen(attemptednick))] =
-				nickchars[srng(fd, sizeof(nickchars))];
+				nickchars[srng(fd+13, sizeof(nickchars))];
 
 			dprintf(fd, "NICK %s\r\n", attemptednick);
 		}

@@ -73,6 +73,15 @@ connections.
 if left empty, autojoining a channel on RPL_WELCOME will be
 disabled.
 
+### s
+```
+/s
+```
+
+re-seed the questionable pseudorandom number generator (for
+changing duplcate nicknames) with the time, as its period is
+a bit small, especially with short nicknames
+
 ### t
 ```
 /t[line]
