@@ -27,6 +27,7 @@ static const char *nickchars = "abcdefghijklmnopqrstuvwxyz\\_|[]";
 char template[513] = "";
 char chan[513] = "";
 int burst = 1;
+useconds_t delay = 0;
 
 /* TODO: make these into a macro or something */
 void info(char *message) {
@@ -240,6 +241,8 @@ void handleControlCommand(char *buf, int buflen) {
 				burst = 1;
 				warn("invalid burst value, reset to 1");
 			}
+		break; case 'd':
+			delay = atoi(buf);
 		break; default: error("unknown control command");
 	}
 }
@@ -269,6 +272,7 @@ void aggressiveRead(char *buf, int buflen, int fd) {
 					if ((buflen = readLine(buf, 512, fd)) == -1)
 						return;
 				}
+				usleep(delay);
 			}
 		}
 		/* allow some stuff to still function if

@@ -61,6 +61,14 @@ and `[realname]` is the realname/gecos to use.
 if left unspecified, `[username]` will default to the
 nickname, and `[realname]` will default to the username.
 
+### d
+```
+/d<number>
+```
+
+where <number> is the delay in useconds to wait between
+sending lines
+
 ### j
 ```
 /j[channel]
