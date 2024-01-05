@@ -157,14 +157,14 @@ int readLine(char *buf, int maxlen, int fd) {
 			break;
 	}
 
-	buf[bufslice+1] = '\0';
+	buf[++bufslice] = '\0';
 
 	/* return -1 if no more data to read */
 	if (readresult == -1)
 		return -1;
 
 	/* return length otherwise */
-	return bufslice+1;
+	return bufslice;
 }
 
 void handleSLine(char *buf, int outfd) {
