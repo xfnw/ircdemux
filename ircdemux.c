@@ -334,15 +334,7 @@ void handleLine(char *buf, int buflen, int fd) {
 			/* discard everything else starting
 			 * with P, such as PRIVMSG */
 			return;
-	}
-
-	/* differentiating between snotes and normal notices
-	 * is too expensive, output them all */
-	if (*cmd == '4' ||
-			!strcmp("NOTICE", cmd) ||
-			!strcmp("366", cmd) ||
-			!strcmp("001", cmd)) {
-
+	} else {
 		/* ERR_NAMEINUSE */
 		if (!strcmp("433", cmd)) {
 			char *attemptednick;
