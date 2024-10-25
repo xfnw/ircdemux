@@ -32,7 +32,7 @@ int burst = 1;
 useconds_t delay = 0;
 
 /* TODO: make these into a macro or something */
-void info(char *message) {
+void info(const char *message) {
 	if (color)
 		fprintf(stderr, "[\033[37mINFO\033[m] %s\n", message);
 	else
@@ -42,28 +42,28 @@ void info(char *message) {
 /* we do not need a newline, since the line-ending is still
  * left on from the raw irc line. this does mean ircdemux's
  * output will have inconsistent line endings, however */
-void infochar(char *m1, char *m2, char *m3) {
+void infochar(const char *m1, const char *m2, const char *m3) {
 	if (color)
 		fprintf(stderr, "[\033[37mINFO\033[m] %s %s %s", m1, m2, m3);
 	else
 		fprintf(stderr, "[INFO] %s %s %s", m1, m2, m3);
 }
 
-void warn(char *message) {
+void warn(const char *message) {
 	if (color)
 		fprintf(stderr, "[\033[33mWARN\033[m] %s\n", message);
 	else
 		fprintf(stderr, "[WARN] %s\n", message);
 }
 
-void error(char *message) {
+void error(const char *message) {
 	if (color)
 		fprintf(stderr, "[\033[31mERROR\033[m] %s\n", message);
 	else
 		fprintf(stderr, "[ERROR] %s\n", message);
 }
 
-void errorint(char *message, int param) {
+void errorint(const char *message, int param) {
 	if (color)
 		fprintf(stderr, "[\033[31mERROR\033[m] %d %s\n", param, message);
 	else
@@ -110,7 +110,7 @@ int openConnect(int epfd, char *server, char *port) {
 
 	int flag = 1;
 	if (setsockopt(sockfd, IPPROTO_TCP, TCP_NODELAY,
-				(char *) &flag,
+				&flag,
 				sizeof(flag)))
 		warn("failed to disable nagle's algorithm");
 
@@ -303,7 +303,8 @@ void handleLine(char *buf, int buflen, int fd) {
 		return;
 	}
 
-	char *source, *tok, *cmd;
+	const char *cmd;
+	char *source, *tok;
 
 	source = strtok_r(buf, " \r\n", &tok);
 
@@ -359,12 +360,11 @@ void handleLine(char *buf, int buflen, int fd) {
 		infochar(source, cmd, tok);
 		return;
 	}
-	//printf("got %s from %s\n",cmd,source);
 }
 
 int epollLoop() {
 	struct epoll_event events[MAX_EVENTS];
-	char *inbuf[513];
+	char inbuf[513];
 	int slice;
 
 	for (;;) {
@@ -376,9 +376,8 @@ int epollLoop() {
 				continue;
 			}
 			if (events[slice].events & EPOLLIN) {
-				int buflen = readLine((char *)inbuf, 512, events[slice].data.fd);
-				//info((char *)inbuf);
-				handleLine((char *)inbuf, buflen, events[slice].data.fd);
+				int buflen = readLine(inbuf, 512, events[slice].data.fd);
+				handleLine(inbuf, buflen, events[slice].data.fd);
 			}
 		}
 	}
@@ -386,7 +385,7 @@ int epollLoop() {
 
 int main() {
 	{
-		char *no_color = getenv("NO_COLOR");
+		const char *no_color = getenv("NO_COLOR");
 		if (no_color != NULL && *no_color != '\0') {
 			color = false;
 		}
